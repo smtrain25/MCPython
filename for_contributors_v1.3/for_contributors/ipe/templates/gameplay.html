@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Puzzle · 64×64</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&display=swap');
+:root {
+  --bg:#000; --s1:#070707; --s2:#0d0d0d; --s3:#131313;
+  --border:#1e1e1e; --border2:#2a2a2a;
+  --dim:#3a3a3a; --mid:#666; --text:#a8a8a8; --bright:#e0e0e0; --white:#f4f4f4;
+  --acc:#b8ff00; --acc-d:#607a00; --acc-bg:rgba(184,255,0,0.05);
+  --green:#00e87a; --red:#ff2828; --yellow:#ffc800; --blue:#3d9eff;
+  --mono:'IBM Plex Mono','Courier New',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+#app{height:100vh;display:flex;flex-direction:column}
+
+.hdr{height:42px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid var(--border);background:var(--s1)}
+.hdr-left{display:flex;align-items:center;gap:14px}
+.hdr-title{font-size:12px;color:var(--bright);font-weight:400;letter-spacing:.1em}
+.hdr-badge{font-size:9px;padding:2px 8px;border:1px solid var(--border2);color:var(--dim);letter-spacing:.1em}
+.hdr-status{font-size:10px;color:var(--acc)}
+.hdr-right{display:flex;align-items:center;gap:12px}
+.settings-btn{background:none;border:1px solid var(--border2);color:var(--mid);font-size:14px;padding:4px 8px;cursor:pointer;border-radius:4px;font-family:var(--mono);transition:all .12s}
+.settings-btn:hover{border-color:var(--acc);color:var(--acc)}
+
+.body{flex:1;display:flex;min-height:0;overflow:hidden}
+.canvas-col{flex-shrink:0;display:flex;flex-direction:column;align-items:center;background:#000;max-height:100%}
+canvas#cvs{display:block;image-rendering:pixelated;max-width:min(100%,calc(100vh - 180px));max-height:calc(100vh - 180px);width:auto;height:auto;aspect-ratio:1/1}
+.res-badge{font-size:7px;color:var(--dim);letter-spacing:.08em;padding:2px 8px;background:var(--s2);border:1px solid var(--border)}
+.controls-bar{flex-shrink:0;padding:8px 16px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--border);background:var(--s2);flex-wrap:wrap;width:100%;position:relative}
+.ctrl-key{width:36px;height:36px;border-radius:6px;background:var(--s3);border:1px solid var(--border2);color:var(--mid);font-size:12px;font-family:var(--mono);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .08s;user-select:none}
+.ctrl-key:hover{border-color:var(--acc);color:var(--acc)}
+.ctrl-key:active,.ctrl-key.pressed{background:var(--acc);color:var(--bg);border-color:var(--acc)}
+.ctrl-key.rect{border-radius:4px;font-size:8px;letter-spacing:.06em}
+
+.info-col{flex:1;display:flex;flex-direction:column;min-height:0;overflow-y:auto;padding:12px 16px;min-width:280px;gap:10px}
+.card{border:1px solid var(--border);background:var(--s1);padding:12px 14px}
+.card h3{font-size:9px;color:var(--acc);letter-spacing:.2em;text-transform:uppercase;margin:0 0 8px;font-weight:400}
+.card-row{display:flex;justify-content:space-between;padding:3px 0;font-size:10px}
+.card-row .ck{color:var(--mid)} .card-row .cv{color:var(--bright)}
+.level-bar{display:flex;gap:4px}
+.level-btn{flex:1;padding:6px 4px;background:var(--s2);border:1px solid var(--border);color:var(--dim);font-size:8px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;text-align:center;font-family:var(--mono);transition:all .12s}
+.level-btn:hover{border-color:var(--border2);color:var(--text)}
+.level-btn.active{border-color:var(--acc);color:var(--acc);background:var(--acc-bg)}
+.level-btn.done{border-color:var(--green);color:var(--green)}
+.score-strip{display:flex;gap:6px}
+.score-box{flex:1;border:1px solid var(--border);background:var(--s2);padding:8px;text-align:center}
+.score-box .sb-label{font-size:7px;color:var(--dim);letter-spacing:.15em;text-transform:uppercase}
+.score-box .sb-val{font-size:20px;color:var(--bright);font-weight:300;margin-top:2px}
+.action-btn{width:100%;padding:8px;background:var(--acc-bg);border:1px solid rgba(184,255,0,.3);color:var(--acc);font-size:10px;letter-spacing:.1em;cursor:pointer;text-transform:uppercase;font-family:var(--mono);transition:all .12s}
+.action-btn:hover{background:rgba(184,255,0,.1)}
+.action-btn:disabled{opacity:.35;cursor:default}
+.action-btn.danger{border-color:rgba(255,40,40,.3);color:var(--red);background:rgba(255,40,40,.03)}
+.mode-toggle{display:flex;border:1px solid var(--border)}
+.mode-opt{flex:1;padding:6px 8px;font-size:9px;letter-spacing:.1em;text-transform:uppercase;text-align:center;cursor:pointer;color:var(--dim);background:var(--s2);font-family:var(--mono);border:none;transition:all .1s}
+.mode-opt.active{background:var(--acc-bg);color:var(--acc)}
+.game-log{flex:1;overflow-y:auto;padding:6px;font-size:8px;color:var(--mid);line-height:1.7;border:1px solid var(--border);background:var(--bg);min-height:80px}
+.log-ok{color:var(--green)} .log-fail{color:var(--red)} .log-info{color:var(--text)} .log-warn{color:var(--yellow)}
+
+/* ── Modals ──────────────────────────────────────── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+
+/* Instructions modal */
+.instr-modal{background:var(--s1);border:1px solid var(--border);padding:32px;max-width:480px;width:90%;position:relative}
+.instr-modal h2{font-size:14px;color:var(--bright);letter-spacing:.15em;text-transform:uppercase;margin-bottom:20px;font-weight:400}
+.instr-modal p{margin-bottom:12px;font-size:11px;line-height:1.8;color:var(--text)}
+.instr-modal .keys{display:flex;gap:6px;margin:12px 0}
+.instr-modal .key{width:32px;height:32px;background:var(--s3);border:1px solid var(--border2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--mid)}
+.instr-modal .close-btn{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--mid);font-size:18px;cursor:pointer;font-family:var(--mono)}
+.instr-modal .close-btn:hover{color:var(--bright)}
+.btn-start{display:block;width:100%;padding:10px;background:var(--acc-bg);border:1px solid rgba(184,255,0,.3);color:var(--acc);font-size:11px;letter-spacing:.2em;cursor:pointer;text-transform:uppercase;font-family:var(--mono);margin-top:16px;transition:all .12s}
+.btn-start:hover{background:rgba(184,255,0,.1)}
+.note{color:var(--yellow)}
+
+@media(max-width:900px){.body{flex-direction:column;overflow-y:auto}.canvas-col{max-height:none}canvas#cvs{max-width:100%;max-height:55vh}.info-col{min-width:0;padding:10px}.instr-modal{width:95vw}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hdr">
+    <div class="hdr-left">
+      <span class="hdr-title" id="game-title">Puzzle</span>
+      <span class="hdr-badge" id="level-badge">Level 1</span>
+      <span class="hdr-status" id="status">Ready</span>
+    </div>
+    <div class="hdr-right">
+      <button class="settings-btn" id="btnCopyFrame" title="Copy current frame as JSON"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5.5" y="5.5" width="8" height="8" rx="1"/><path d="M10.5 5.5V3.5a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></svg></button>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="canvas-col">
+      <canvas id="cvs" width="1024" height="1024"></canvas>
+      <div class="res-badge" id="res-badge">1024&#215;1024</div>
+      <div class="controls-bar" style="justify-content:center;padding:10px 0">
+        <div style="display:flex;align-items:center;gap:24px">
+          <div class="ctrl-key rect" style="width:64px;height:32px;align-self:flex-end" id="k-space" onclick="doAction(5)">SPACE</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div class="ctrl-key" onclick="doAction(1)" id="k-w">W</div>
+            <div style="display:flex;gap:4px">
+              <div class="ctrl-key" onclick="doAction(3)" id="k-a">A</div>
+              <div class="ctrl-key" onclick="doAction(2)" id="k-s">S</div>
+              <div class="ctrl-key" onclick="doAction(4)" id="k-d">D</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-self:flex-end">
+            <div class="ctrl-key" onclick="doAction(7)" id="k-z">Z</div>
+            <div class="ctrl-key" onclick="doAction(0)" id="k-r">R</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;justify-content:center;width:100%;margin-top:6px">
+          <span style="font-size:7px;color:var(--dim);letter-spacing:.1em" id="turn-info">Actions: 0</span>
+          <span style="font-size:7px;color:var(--dim);letter-spacing:.1em" id="score-info">Score: 0/0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-col">
+      <div class="level-bar" id="level-bar"></div>
+      <div class="score-strip">
+        <div class="score-box"><div class="sb-label">Level</div><div class="sb-val" id="s-level">1</div></div>
+        <div class="score-box"><div class="sb-label">Actions</div><div class="sb-val" id="s-actions">0</div></div>
+        <div class="score-box"><div class="sb-label">Score</div><div class="sb-val" id="s-score">0</div></div>
+      </div>
+      <div class="card">
+        <h3>Info</h3>
+        <div class="card-row"><span class="ck">Grid</span><span class="cv">64 &#215; 64</span></div>
+        <div class="card-row"><span class="ck">State</span><span class="cv" id="cfg-state">NOT_PLAYED</span></div>
+        <div class="card-row"><span class="ck">Controls</span><span class="cv">WASD | Z=Undo | R=Reset</span></div>
+      </div>
+      <div class="game-log" id="log"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Instructions Modal (shown on start) -->
+<div class="modal-overlay open" id="instructions-modal">
+  <div class="instr-modal">
+    <button class="close-btn" onclick="hideInstructions()">&#x2715;</button>
+    <h2>Game Instructions</h2>
+    <p>Available Controls:</p>
+    <div class="keys" id="instr-keys">
+      <span class="key">&#8593;</span>
+      <span class="key">&#8595;</span>
+      <span class="key">&#8592;</span>
+      <span class="key">&#8594;</span>
+    </div>
+    <p><span class="note">Note:</span> You can also use the keyboard buttons that match these controls.</p>
+    <p>You need to play the game to discover controls, rules, and goal.</p>
+    <p>Play the game, have fun, <strong>You've got this!</strong></p>
+    <p>Press '<em>Start</em>' to play.</p>
+    <button class="btn-start" onclick="hideInstructions()">START</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+const CVS=1024, NN=64;
+const canvas=document.getElementById('cvs'), ctx=canvas.getContext('2d');
+const PAL=[[0,0,0],[0,116,217],[228,26,28],[77,175,74],[255,225,25],[128,128,128],[207,62,150],[255,127,14],[148,202,255],[139,90,43],[128,0,0],[0,128,128],[127,255,0],[211,211,211],[255,175,200],[255,255,255]];
+
+let lastFrame=null,gameState='NOT_PLAYED',levelsCompleted=0,winLevels=0;
+let actionCount=0,mode='human';
+let completedLevels=new Set(),currentLevel=0,totalLevels=1;
+let animating=false; /* blocks input during transitions */
+
+/* Instructions modal */
+function hideInstructions(){document.getElementById('instructions-modal').classList.remove('open')}
+
+/* Rendering */
+function drawFrame(frame){
+  if(!frame||!frame.length)return;
+  const cW=CVS/NN;
+  const imgData=ctx.createImageData(CVS,CVS);
+  const d=imgData.data;
+  for(let r=0;r<NN;r++){
+    for(let c=0;c<NN;c++){
+      const ci=frame[r][c];
+      const[cr,cg,cb]=(ci>=0&&ci<16)?PAL[ci]:PAL[0];
+      /* Only draw grid lines at colour boundaries (not inside solid regions) */
+      const topDiff=(r>0&&frame[r-1][c]!==ci);
+      const leftDiff=(c>0&&frame[r][c-1]!==ci);
+      const px=Math.floor(c*cW),py=Math.floor(r*cW);
+      const px2=Math.floor((c+1)*cW),py2=Math.floor((r+1)*cW);
+      for(let y=py;y<py2;y++){
+        for(let x=px;x<px2;x++){
+          const i=(y*CVS+x)*4;
+          const showLine=(y===py&&topDiff)||(x===px&&leftDiff);
+          if(showLine){
+            const gr=Math.min(255,cr+25),gg=Math.min(255,cg+25),gb=Math.min(255,cb+25);
+            d[i]=gr;d[i+1]=gg;d[i+2]=gb;d[i+3]=255;
+          } else {
+            d[i]=cr;d[i+1]=cg;d[i+2]=cb;d[i+3]=255;
+          }
+        }
+      }
+    }
+  }
+  ctx.putImageData(imgData,0,0);
+}
+
+/* Highlight a cell temporarily (for click feedback) */
+let cellHighlight=null;
+function highlightCell(gridX,gridY){
+  const cW=CVS/NN;
+  cellHighlight={x:gridX,y:gridY,alpha:0.6,t:0};
+  function drawHL(){
+    if(!cellHighlight||cellHighlight.t>12)return;
+    if(lastFrame)drawFrame(lastFrame);
+    const px=Math.floor(cellHighlight.x*cW),py=Math.floor(cellHighlight.y*cW);
+    const pw=Math.floor(cW),ph=Math.floor(cW);
+    ctx.save();
+    ctx.strokeStyle=`rgba(184,255,0,${cellHighlight.alpha})`;
+    ctx.lineWidth=3;
+    ctx.strokeRect(px+1,py+1,pw-2,ph-2);
+    /* Small crosshair in center */
+    const mx=px+pw/2,my=py+ph/2;
+    ctx.beginPath();ctx.moveTo(mx-6,my);ctx.lineTo(mx+6,my);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(mx,my-6);ctx.lineTo(mx,my+6);ctx.stroke();
+    ctx.restore();
+    cellHighlight.alpha-=0.05;cellHighlight.t++;
+    if(cellHighlight.alpha>0)requestAnimationFrame(drawHL);
+  }
+  requestAnimationFrame(drawHL);
+}
+function drawOverlay(state){if(state==='WIN'){ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(0,0,CVS,CVS);ctx.fillStyle='#00e87a';ctx.font='bold 36px IBM Plex Mono';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('LEVEL COMPLETE',CVS/2,CVS/2-20);ctx.fillStyle='#666';ctx.font='14px IBM Plex Mono';ctx.fillText('Advancing...',CVS/2,CVS/2+20)}else if(state==='GAME_OVER'){ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(0,0,CVS,CVS);ctx.fillStyle='#ff2828';ctx.font='bold 36px IBM Plex Mono';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('GAME OVER',CVS/2,CVS/2)}}
+
+/* ── Level transition animations (human-only, never sent to agents) ── */
+const TRANS_COLORS=[[0,116,217],[207,62,150],[128,128,128],[148,202,255],[211,211,211],[255,255,255],[77,175,74]];
+function _rndTransColor(){return TRANS_COLORS[Math.floor(Math.random()*TRANS_COLORS.length)]}
+
+function playWipeTransition(){
+  return new Promise(resolve=>{
+    animating=true;
+    const frames=30;let f=0;
+    const id=setInterval(()=>{
+      const progress=f/frames;
+      const cutoff=Math.floor(progress*CVS);
+      /* Draw existing frame first */
+      if(lastFrame)drawFrame(lastFrame);
+      /* Wipe colored columns from left */
+      for(let x=0;x<cutoff;x++){
+        const[r,g,b]=_rndTransColor();
+        ctx.fillStyle=`rgb(${r},${g},${b})`;
+        ctx.fillRect(x,0,1,CVS);
+      }
+      f++;
+      if(f>frames){
+        clearInterval(id);
+        /* Wipe back to black */
+        let f2=0;
+        const id2=setInterval(()=>{
+          const p=f2/frames;
+          ctx.fillStyle='#000';
+          ctx.fillRect(0,0,Math.floor(p*CVS),CVS);
+          f2++;
+          if(f2>frames){clearInterval(id2);animating=false;resolve()}
+        },20);
+      }
+    },20);
+  });
+}
+
+function playIrisTransition(){
+  return new Promise(resolve=>{
+    animating=true;
+    const cx=CVS/2,cy=CVS/2,maxR=Math.sqrt(cx*cx+cy*cy);
+    const frames=35;let f=0;
+    const id=setInterval(()=>{
+      const progress=f/frames;
+      const radius=maxR*(1-progress);
+      if(lastFrame)drawFrame(lastFrame);
+      /* Draw black circle closing in */
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0,0,CVS,CVS);
+      ctx.arc(cx,cy,Math.max(0,radius),0,Math.PI*2,true);
+      ctx.clip();
+      /* Fill clipped region with colored noise */
+      for(let y=0;y<CVS;y+=16){
+        for(let x=0;x<CVS;x+=16){
+          const[r,g,b]=_rndTransColor();
+          ctx.fillStyle=`rgb(${r},${g},${b})`;
+          ctx.fillRect(x,y,16,16);
+        }
+      }
+      ctx.restore();
+      f++;
+      if(f>frames){
+        clearInterval(id);
+        /* Brief black pause */
+        ctx.fillStyle='#000';ctx.fillRect(0,0,CVS,CVS);
+        setTimeout(()=>{animating=false;resolve()},200);
+      }
+    },25);
+  });
+}
+
+function playRandomTransition(){
+  return Math.random()>0.5?playWipeTransition():playIrisTransition();
+}
+
+/* ── Click visual feedback (ripple on canvas) ── */
+let clickRipples=[];
+function addClickRipple(cx,cy){
+  clickRipples.push({x:cx,y:cy,r:0,maxR:40,alpha:0.8});
+}
+function drawClickRipples(){
+  clickRipples=clickRipples.filter(rp=>{
+    rp.r+=3;rp.alpha-=0.04;
+    if(rp.alpha<=0)return false;
+    ctx.save();
+    ctx.strokeStyle=`rgba(184,255,0,${rp.alpha})`;
+    ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(rp.x,rp.y,rp.r,0,Math.PI*2);ctx.stroke();
+    /* Inner crosshair */
+    if(rp.r<15){
+      ctx.beginPath();ctx.moveTo(rp.x-8,rp.y);ctx.lineTo(rp.x+8,rp.y);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(rp.x,rp.y-8);ctx.lineTo(rp.x,rp.y+8);ctx.stroke();
+    }
+    ctx.restore();
+    return true;
+  });
+  if(clickRipples.length>0)requestAnimationFrame(()=>{if(lastFrame)drawFrame(lastFrame);drawClickRipples()});
+}
+
+/* UI */
+function updateUI(){document.getElementById('s-level').textContent=currentLevel+1;document.getElementById('s-actions').textContent=actionCount;document.getElementById('s-score').textContent=`${levelsCompleted}/${winLevels}`;document.getElementById('level-badge').textContent=`Level ${currentLevel+1} / ${totalLevels}`;document.getElementById('cfg-state').textContent=gameState;document.getElementById('turn-info').textContent=`Actions: ${actionCount}`;document.getElementById('score-info').textContent=`Score: ${levelsCompleted}/${winLevels}`;document.getElementById('status').textContent=gameState==='WIN'?'Complete!':gameState==='GAME_OVER'?'Game Over':'Ready';const disp=`${Math.round(canvas.getBoundingClientRect().width)}x${Math.round(canvas.getBoundingClientRect().height)}`;document.getElementById('res-badge').textContent=`Internal: ${canvas.width}x${canvas.height} | Display: ${disp}`}
+function addLog(type,msg){const el=document.getElementById('log');const d=document.createElement('div');d.className='log-'+type;d.textContent=`[${actionCount}] ${msg}`;el.prepend(d)}
+
+/* API */
+async function apiAction(actionId,data={}){const body={action_id:actionId,...data};const r=await fetch('/api/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(d.frame&&d.frame.length>0){lastFrame=d.frame[d.frame.length-1];drawFrame(lastFrame)}const prevCompleted=levelsCompleted;gameState=d.state||'NOT_FINISHED';levelsCompleted=d.levels_completed||0;winLevels=d.win_levels||0;actionCount=d.action_count||actionCount;d._levelAdvanced=(levelsCompleted>prevCompleted&&gameState!=='WIN');if(d.state==='WIN'||d.state==='GAME_OVER')drawOverlay(d.state);updateUI();return d}
+
+/* Human controls */
+async function doAction(actionId){
+  if(mode!=='human'||animating||gameState==='WIN'||gameState==='GAME_OVER')return;
+  if(actionId===6)return;
+  const d=await apiAction(actionId);
+  if(d._levelAdvanced){
+    completedLevels.add(currentLevel);
+    addLog('ok',`Level ${currentLevel+1} complete!`);
+    await playRandomTransition();
+    currentLevel++;buildLevelBar();updateUI();
+    if(lastFrame)drawFrame(lastFrame);
+  } else if(d.state==='WIN'){
+    completedLevels.add(currentLevel);updateLevelBar();
+    addLog('ok','All levels complete!');
+  } else if(d.state==='GAME_OVER'){
+    addLog('fail','Game over');
+    setTimeout(()=>apiAction(0),1500);
+  }
+}
+canvas.addEventListener('click',async(e)=>{
+  if(mode!=='human'||animating||gameState==='WIN'||gameState==='GAME_OVER')return;
+  const rect=canvas.getBoundingClientRect();
+  const scX=canvas.width/rect.width,scY=canvas.height/rect.height;
+  const cx=Math.floor((e.clientX-rect.left)*scX);
+  const cy=Math.floor((e.clientY-rect.top)*scY);
+  const dx=Math.floor(cx/canvas.width*64),dy=Math.floor(cy/canvas.height*64);
+  highlightCell(dx,dy);
+  addClickRipple(cx,cy);drawClickRipples();
+  const d=await apiAction(6,{x:dx,y:dy});
+  addLog('info',`Click (${dx},${dy})`);
+  if(d._levelAdvanced){
+    completedLevels.add(currentLevel);
+    addLog('ok',`Level ${currentLevel+1} complete!`);
+    await playRandomTransition();
+    currentLevel++;buildLevelBar();updateUI();
+    if(lastFrame)drawFrame(lastFrame);
+  } else if(d.state==='WIN'){
+    completedLevels.add(currentLevel);updateLevelBar();
+    addLog('ok','All levels complete!');
+  }
+});
+
+const keysDown=new Set();
+const keyMap={ArrowUp:1,w:1,ArrowDown:2,s:2,ArrowLeft:3,a:3,ArrowRight:4,d:4,' ':5,f:5,z:7,r:0};
+const keyToEl={w:'k-w',a:'k-a',s:'k-s',d:'k-d',z:'k-z',r:'k-r',' ':'k-space',ArrowUp:'k-w',ArrowDown:'k-s',ArrowLeft:'k-a',ArrowRight:'k-d'};
+function flashKey(id){const el=document.getElementById(id);if(!el)return;el.classList.add('pressed');setTimeout(()=>el.classList.remove('pressed'),240)}
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT')return;if(e.metaKey||e.ctrlKey||e.altKey)return;keysDown.add(e.key);if(keysDown.size>1)return;const elId=keyToEl[e.key];if(elId)flashKey(elId);const a=keyMap[e.key];if(a!==undefined){e.preventDefault();doAction(a)}});
+document.addEventListener('keyup',e=>{keysDown.delete(e.key)});
+window.addEventListener('blur',()=>{keysDown.clear()});
+
+/* Copy Frame */
+document.getElementById('btnCopyFrame').addEventListener('click',()=>{
+  if(!lastFrame){addLog('warn','No frame to copy');return}
+  const json=JSON.stringify(lastFrame);
+  navigator.clipboard.writeText(json).then(()=>{
+    addLog('ok','Frame copied to clipboard');
+    const btn=document.getElementById('btnCopyFrame');
+    btn.style.borderColor='var(--green)';btn.style.color='var(--green)';
+    setTimeout(()=>{btn.style.borderColor='';btn.style.color=''},800);
+  }).catch(()=>addLog('fail','Copy failed'));
+});
+
+function buildLevelBar(){const bar=document.getElementById('level-bar');bar.innerHTML='';for(let i=0;i<totalLevels;i++){const b=document.createElement('button');b.className='level-btn'+(i===currentLevel?' active':'')+(completedLevels.has(i)?' done':'');b.textContent=`L${i+1}`;b.onclick=()=>jumpToLevel(i);bar.appendChild(b)}}
+function updateLevelBar(){buildLevelBar()}
+async function jumpToLevel(idx){
+  try{
+    const r=await fetch('/api/set-level',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({level:idx})});
+    const d=await r.json();
+    if(d.error){addLog('fail',d.error);return}
+    if(d.frame&&d.frame.length>0){lastFrame=d.frame[d.frame.length-1];drawFrame(lastFrame)}
+    gameState=d.state||'NOT_FINISHED';levelsCompleted=d.levels_completed||0;winLevels=d.win_levels||0;actionCount=0;
+    currentLevel=idx;buildLevelBar();updateUI();
+    addLog('info',`Jumped to level ${idx+1}`);
+  }catch(e){addLog('fail','Set level failed: '+e.message)}
+}
+
+async function init(){
+  try{const cfg=await(await fetch('/api/config')).json();totalLevels=cfg.num_levels||1;document.getElementById('game-title').textContent=cfg.game_name||'Puzzle'}catch(e){}
+  buildLevelBar();await apiAction(0);window.addEventListener('resize',()=>updateUI());
+}
+init();
+</script>
+</body>
+</html>
